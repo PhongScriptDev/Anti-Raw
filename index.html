@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Raw Link</title>
+    <title>Raw Code</title>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
       import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+      // CẤU HÌNH FIREBASE
       const firebaseConfig = {
         apiKey: "AIzaSyBHJpsXdmdwxDlf3ejFCkU084RSDbNFsM",
         authDomain: "anti-raw.firebaseapp.com",
@@ -21,6 +22,7 @@
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
+      // Hàm tạo ID ngẫu nhiên
       function generateRandomId(length) {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
           let result = '';
@@ -30,6 +32,7 @@
           return result;
       }
 
+      // 1. HÀM TẠO LINK
       window.createAndRedirect = async function() {
           const name = document.getElementById('url-name').value.trim();
           const password = document.getElementById('password').value;
@@ -47,6 +50,7 @@
           btn.innerText = "⏳ Đang tạo link..."; btn.disabled = true;
 
           try {
+              // Lưu lên Firebase
               await set(ref(db, 'raw_scripts/' + randomId), {
                   name: safeName,
                   password: password,
@@ -59,6 +63,7 @@
               if (baseUrl.endsWith('.html')) baseUrl = baseUrl.replace('.html', '');
               if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
 
+              // Chuyển hướng đến link mới
               window.location.href = `${baseUrl}/?user=${safeName}&id=${randomId}`;
           } catch (error) {
               alert("Lỗi khi lưu lên Firebase: " + error.message);
@@ -66,12 +71,12 @@
           }
       };
 
+      // 2. HÀM HIỂN THỊ CODE (RAW GITHUB STYLE)
       window.onload = async function() {
           const urlParams = new URLSearchParams(window.location.search);
           const rawId = urlParams.get('id');
-          const userName = urlParams.get('user');
-          const isRawMode = urlParams.get('raw') === 'true';
 
+          // Nếu có ID trên URL -> Chuyển sang chế độ Raw
           if (rawId) {
               try {
                   const snapshot = await get(ref(db, 'raw_scripts/' + rawId));
@@ -79,48 +84,43 @@
                   if (snapshot.exists()) {
                       const data = snapshot.val();
 
-                      // NẾU LÀ CHẾ ĐỘ RAW (DÀNH CHO DELTA/EXECUTOR)
-                      if (isRawMode) {
-                          // Xóa toàn bộ HTML, chỉ trả về code thô
-                          document.documentElement.innerHTML = "";
-                          document.body.innerText = data.code;
-                          document.body.style.margin = "0";
-                          document.body.style.padding = "0";
-                          return;
-                      }
-
-                      // NẾU LÀ XEM BÌNH THƯỜNG (GIAO DIỆN TRẮNG)
-                      document.body.style.display = 'flex'; // Hiện lại body
-                      document.getElementById('create-form').style.display = 'none';
-                      document.body.style.backgroundColor = '#fff'; 
-                      document.body.style.padding = '0';
-                      document.getElementById('raw-view').style.display = 'block';
-                      document.getElementById('raw-title').innerText = "Raw Code: " + data.name;
-                      document.getElementById('raw-user').innerText = "Created by: " + userName;
-                      document.getElementById('raw-code').innerText = data.code;
+                      // XÓA SẠCH HTML, CHỈ GIỮ LẠI CODE
+                      document.documentElement.innerHTML = "";
+                      // Thêm thẻ meta để trình duyệt hiển thị dạng text
+                      let meta = document.createElement('meta');
+                      meta.name = "viewport";
+                      meta.content = "width=device-width, initial-scale=1.0";
+                      document.head.appendChild(meta);
+                      
+                      // Đưa code vào thẻ body
+                      document.body.innerText = data.code;
+                      
+                      // CSS cho giống GitHub Raw
+                      document.body.style.margin = "0";
+                      document.body.style.padding = "16px";
+                      document.body.style.backgroundColor = "#ffffff";
+                      document.body.style.color = "#24292e";
+                      document.body.style.fontFamily = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
+                      document.body.style.fontSize = "12px";
+                      document.body.style.whiteSpace = "pre-wrap";
+                      document.body.style.wordWrap = "break-word";
+                      return;
                   } else {
-                      show404();
+                      document.body.innerHTML = "<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>404 Not Found</h1>";
+                      document.body.style.display = 'flex';
                   }
               } catch (error) {
-                  show404();
+                  document.body.innerHTML = "<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>Lỗi kết nối Database</h1>";
+                  document.body.style.display = 'flex';
               }
           } else {
-              // NẾU KHÔNG CÓ ID, HIỆN GIAO DIỆN TẠO LINK
+              // Nếu không có ID (vào trang chủ) -> Hiện giao diện tạo link
               document.body.style.display = 'flex';
           }
       };
-
-      function show404() {
-          document.body.innerHTML = `
-              <div style="color: #333; text-align: center; padding: 50px; width: 100%; height: 100vh; font-family: sans-serif; background: #fff;">
-                  <h1 style="color: #ef4444;">404 - Không tìm thấy Code</h1>
-                  <p>Link này không tồn tại hoặc đã bị xóa.</p>
-              </div>
-          `;
-      }
     </script>
     <style>
-        /* BAN ĐẦU ẨN HOÀN TOÀN BODY ĐỂ KHÔNG LỘ HTML */
+        /* BAN ĐẦU ẨN BODY ĐỂ TRÁNH CHỚP GIAO DIỆN */
         body { display: none; background-color: #111; color: white; font-family: sans-serif; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding-top: 30px; }
         
         .container { background-color: #222; padding: 30px; border-radius: 10px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -131,11 +131,6 @@
         textarea { height: 120px; resize: vertical; }
         button { width: 100%; padding: 12px; background-color: #facc15; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; }
         button:hover { background-color: #eab308; }
-
-        #raw-view { display: none; background-color: #ffffff; color: #000000; font-family: monospace; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: auto; padding: 20px; box-sizing: border-box; z-index: 100; }
-        .raw-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; font-family: sans-serif; display: flex; justify-content: space-between; align-items: center; }
-        .raw-title { font-size: 18px; font-weight: bold; color: #333; }
-        .raw-code { white-space: pre-wrap; word-wrap: break-word; font-size: 14px; line-height: 1.5; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -159,14 +154,6 @@
             <textarea id="script-code" placeholder="Dán code vào đây..."></textarea>
         </div>
         <button onclick="createAndRedirect()">Create raw link</button>
-    </div>
-
-    <div id="raw-view">
-        <div class="raw-header">
-            <div class="raw-title" id="raw-title">Raw Script</div>
-            <div id="raw-user" style="color: #666; font-size: 14px;"></div>
-        </div>
-        <div class="raw-code" id="raw-code"></div>
     </div>
 
 </body>
