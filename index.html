@@ -8,7 +8,6 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
       import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-      // CẤU HÌNH FIREBASE CỦA BẠN
       const firebaseConfig = {
         apiKey: "AIzaSyBHJpsXdmdwxDlf3ejFCkU084RSDbNFsM",
         authDomain: "anti-raw.firebaseapp.com",
@@ -82,7 +81,7 @@
 
                       // NẾU LÀ CHẾ ĐỘ RAW (DÀNH CHO DELTA/EXECUTOR)
                       if (isRawMode) {
-                          // Xóa sạch mọi thứ, chỉ để lại code thô
+                          // Xóa toàn bộ HTML, chỉ trả về code thô
                           document.documentElement.innerHTML = "";
                           document.body.innerText = data.code;
                           document.body.style.margin = "0";
@@ -90,7 +89,8 @@
                           return;
                       }
 
-                      // NẾU LÀ XEM BÌNH THƯỜNG
+                      // NẾU LÀ XEM BÌNH THƯỜNG (GIAO DIỆN TRẮNG)
+                      document.body.style.display = 'flex'; // Hiện lại body
                       document.getElementById('create-form').style.display = 'none';
                       document.body.style.backgroundColor = '#fff'; 
                       document.body.style.padding = '0';
@@ -104,6 +104,9 @@
               } catch (error) {
                   show404();
               }
+          } else {
+              // NẾU KHÔNG CÓ ID, HIỆN GIAO DIỆN TẠO LINK
+              document.body.style.display = 'flex';
           }
       };
 
@@ -117,7 +120,7 @@
       }
     </script>
     <style>
-        /* MẶC ĐỊNH ẨN TOÀN BỘ GIAO DIỆN ĐI ĐỂ TRÁNH BỊ LẤY NHẦM HTML */
+        /* BAN ĐẦU ẨN HOÀN TOÀN BODY ĐỂ KHÔNG LỘ HTML */
         body { display: none; background-color: #111; color: white; font-family: sans-serif; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding-top: 30px; }
         
         .container { background-color: #222; padding: 30px; border-radius: 10px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -166,14 +169,5 @@
         <div class="raw-code" id="raw-code"></div>
     </div>
 
-    <script>
-        // Bật lại giao diện nếu không phải chế độ raw
-        window.addEventListener('load', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('raw') !== 'true') {
-                document.body.style.display = 'flex';
-            }
-        });
-    </script>
 </body>
 </html>
