@@ -188,21 +188,15 @@
             <input type="text" id="admin-ip" placeholder="Nhập IP của bạn...">
         </div>
 
-        <!-- DROPDOWN CHỌN KIỂU MÃ HÓA -->
         <div class="form-group">
             <label>Chọn kiểu mã hóa (Bắt buộc chọn):</label>
             <select id="encode-method">
-                <option value="type1">Type 1: Mảng số (Table Encode)</option>
+                <option value="type1">Type 1: Mảng số (Table Encode - An toàn nhất)</option>
                 <option value="type2">Type 2: Chuỗi Char (String.char)</option>
-                <option value="type3">Type 3: Mã hóa Hex + XOR (Tối giản, tương thích Delta)</option>
+                <option value="type3">Type 3: Mã hóa Hex + XOR (Tối giản)</option>
             </select>
         </div>
 
-        <div class="form-group">
-            <label>Code Lua (Dán code gốc vào đây trước khi mã hóa)</label>
-            <textarea id="admin-code" placeholder="Dán code Lua thô vào đây..."></textarea>
-        </div>
-        
         <button onclick="obfuscateAdminCode()" id="btn-obfuscate" class="btn-main btn-obfuscate">🔐 Obfuscation Code</button>
         <button onclick="downloadCode()" class="btn-main btn-download">📥 Download Code (.txt)</button>
         <button onclick="saveAdmin()" class="btn-main" style="margin-top:20px; background:var(--primary); color:#000;">💾 Lưu Cấu Hình</button>
@@ -341,7 +335,7 @@
         }
 
         // ==========================================
-        // HÀM OBFUSCATION (3 CHẾ ĐỘ)
+        // HÀM OBFUSCATION (ĐÃ FIX LỖI STRING.CHAR)
         // ==========================================
         async function obfuscateAdminCode() {
             const rawCode = document.getElementById('admin-code').value;
@@ -358,17 +352,44 @@
             if (method === "type1") {
                 // TYPE 1: Mảng số (XOR + Cộng 100 + Xáo trộn)
                 let charCodes = [];
-                for (let i = 0; i < rawCode.length; i++) { charCodes.push((rawCode.charCodeAt(i) ^ 42) + 100); }
-                for (let i = charCodes.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [charCodes[i], charCodes[j]] = [charCodes[j], charCodes[i]]; }
+                for (let i = 0; i < rawCode.length; i++) { 
+                    // Dùng & 0xFF để ép giá trị luôn từ 0-255 trước khi cộng 100
+                    // Nhưng thực tế hàm string.char của Roblox không nhận số âm, nên ta phải xử lý khéo léo
+                    // Giải pháp: XOR xong cộng 100, đảm bảo nó luôn dương
+                    let val = (rawCode.charCodeAt(i) ^ 42); 
+                    if(val < 0) val = val + 256; 
+                    charCodes.push(val); 
+                }
+                
+                // Xáo trộn mảng
+                for (let i = charCodes.length - 1; i > 0; i--) { 
+                    const j = Math.floor(Math.random() * (i + 1)); 
+                    [charCodes[i], charCodes[j]] = [charCodes[j], charCodes[i]]; 
+                }
+                
                 const packedData = JSON.stringify(charCodes); const salt = Math.floor(Math.random() * 9999); 
-                obfuscatedLuau = `${header}local _p = ${packedData}\nlocal _s = ${salt}\nlocal _b = {}\nfor _i, _v in ipairs(_p) do\n    _b[_i] = string.char((_v - 100) ~ 42)\nend\nlocal _c = table.concat(_b)\nlocal _f, _e = loadstring(_c)\nif _f then _f() else warn("[Vault] Lỗi: "..tostring(_e)) end`;
+                
+                // Code giải mã (Tương thích Delta)
+                obfuscatedLuau = `${header}local _p = ${packedData}
+local _s = ${salt}
+local _b = {}
+for _i, _v in ipairs(_p) do
+    _b[_i] = string.char(_v ~ 42)
+end
+local _c = table.concat(_b)
+local _f, _e = loadstring(_c)
+if _f then _f() else warn("[Vault] Lỗi: "..tostring(_e)) end`;
 
             } else if (method === "type2") {
                 // TYPE 2: String.char
                 let charArray = [];
-                for (let i = 0; i < rawCode.length; i++) { charArray.push(rawCode.charCodeAt(i)); }
+                for (let i = 0; i < rawCode.length; i++) { 
+                    charArray.push(rawCode.charCodeAt(i)); 
+                }
                 let chunks = [];
-                for (let i = 0; i < charArray.length; i += 100) { chunks.push(charArray.slice(i, i + 100).join(",")); }
+                for (let i = 0; i < charArray.length; i += 100) { 
+                    chunks.push(charArray.slice(i, i + 100).join(",")); 
+                }
                 let encodedString = "";
                 chunks.forEach(chunk => { encodedString += `string.char(${chunk})..\n`; });
                 encodedString = encodedString.slice(0, -3); 
@@ -376,23 +397,24 @@
                 obfuscatedLuau = `${header}local _n = "${noise}"\nlocal _c = ${encodedString}\nlocal _f, _e = loadstring(_c)\nif _f then _f() else warn("[Vault] Lỗi: "..tostring(_e)) end`;
 
             } else if (method === "type3") {
-                // TYPE 3 MỚI: Mã hóa HEX + XOR (Đã bỏ Base64 thủ công)
+                // TYPE 3: Hex + XOR
                 const key = Math.floor(Math.random() * 200) + 50;
                 let hexData = "";
                 for (let i = 0; i < rawCode.length; i++) {
-                    // Dùng XOR và chuyển thẳng sang Hex (Cơ số 16)
                     let charCode = rawCode.charCodeAt(i) ^ key;
-                    hexData += charCode.toString(16).padStart(4, '0');
+                    if(charCode < 0) charCode = charCode + 256;
+                    // Pad thành 2 ký tự Hex (vì 1 byte max là FF = 255)
+                    hexData += charCode.toString(16).padStart(2, '0');
                 }
                 const reversedKey = key.toString().split('').reverse().join(''); 
 
-                // Code giải mã Hex cực gọn, không cần Base64
+                // Code giải mã Hex (Cực ngắn gọn, không có Base64)
                 obfuscatedLuau = `${header}local _k = tonumber("${reversedKey}")
 local _h = "${hexData}"
 local _d = ""
 
-for i = 1, #_h, 4 do
-    local _charCode = tonumber(_h:sub(i, i + 3), 16) ~ _k
+for i = 1, #_h, 2 do
+    local _charCode = tonumber(_h:sub(i, i + 1), 16) ~ _k
     _d = _d .. string.char(_charCode)
 end
 
