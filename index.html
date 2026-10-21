@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Raw Link</title>
     <style>
+        /* GIAO DIỆN FORM TẠO LINK (NỀN TỐI) */
         body {
             background-color: #111;
             color: white;
@@ -41,10 +42,7 @@
             font-family: monospace;
             font-size: 14px;
         }
-        textarea {
-            height: 120px;
-            resize: vertical;
-        }
+        textarea { height: 120px; resize: vertical; }
         
         button {
             width: 100%;
@@ -59,35 +57,51 @@
             transition: 0.2s;
         }
         button:hover { background-color: #eab308; }
-        
-        #result-box {
-            margin-top: 20px;
-            display: none;
-            background-color: #000;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #4ade80;
-            text-align: center;
+
+        /* GIAO DIỆN TRANG RAW (NỀN TRẮNG) */
+        #raw-view {
+            display: none; /* Ẩn mặc định, chỉ hiện khi có link */
+            background-color: #ffffff;
+            color: #000000;
+            font-family: monospace;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 100;
         }
-        #result-link {
-            color: #4ade80;
+        .raw-header {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .raw-title { font-size: 18px; font-weight: bold; color: #333; }
+        .raw-code {
+            white-space: pre-wrap;
+            word-wrap: break-word;
             font-size: 14px;
-            font-weight: bold;
-            word-break: break-all;
-            text-decoration: underline;
-            cursor: pointer;
+            line-height: 1.5;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <!-- FORM TẠO LINK -->
+    <div class="container" id="create-form">
         <h2>Create Raw Link</h2>
-        <p style="text-align:center; color:#aaa; font-size:12px; margin-bottom:20px;">(Dữ liệu sẽ được lưu vào link, không cần server)</p>
 
         <div class="form-group">
             <label>Tên URL:</label>
-            <input type="text" id="url-name" placeholder="Nhập tên URL...">
+            <input type="text" id="url-name" placeholder="Nhập tên (ví dụ: phongscript)...">
         </div>
 
         <div class="form-group">
@@ -105,30 +119,32 @@
             <textarea id="script-code" placeholder="Dán code vào đây..."></textarea>
         </div>
 
-        <button onclick="createLink()">Create raw link</button>
+        <button onclick="createAndRedirect()">Create raw link</button>
+    </div>
 
-        <div id="result-box">
-            <p>Link của bạn (Bấm vào để mở):</p>
-            <a id="result-link" target="_blank"></a>
-            <br><br>
-            <button onclick="copyLink()" style="background:#4ade80; padding:8px; font-size:14px;">Copy Link</button>
+    <!-- TRANG RAW (CHỈ HIỆN KHI TRUY CẬP LINK) -->
+    <div id="raw-view">
+        <div class="raw-header">
+            <div class="raw-title" id="raw-title">Raw Script</div>
+            <div id="raw-user" style="color: #666; font-size: 14px;"></div>
         </div>
+        <div class="raw-code" id="raw-code"></div>
     </div>
 
     <script>
-        // Hàm mã hóa Base64 hỗ trợ tiếng Việt
-        function encodeData(str) {
-            return btoa(encodeURIComponent(str));
+        // 1. HÀM TẠO MÃ NGẪU NHIÊN 10 KÝ TỰ (SỐ + CHỮ)
+        function generateRandomId(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
         }
 
-        // Hàm giải mã Base64
-        function decodeData(str) {
-            return decodeURIComponent(atob(str));
-        }
-
-        // 1. TẠO LINK
-        function createLink() {
-            const name = document.getElementById('url-name').value;
+        // 2. HÀM TẠO LINK VÀ CHUYỂN HƯỚNG
+        function createAndRedirect() {
+            const name = document.getElementById('url-name').value.trim();
             const password = document.getElementById('password').value;
             const extra = document.getElementById('extra-input').value;
             const code = document.getElementById('script-code').value;
@@ -138,65 +154,70 @@
                 return;
             }
 
-            // Gom dữ liệu thành một Object
-            const data = {
-                n: name,
-                p: password,
-                e: extra,
-                c: code
+            // Xóa khoảng trắng trong tên user (để link đẹp hơn)
+            const safeName = name.replace(/\s+/g, '_');
+
+            // Tạo 10 ký tự ngẫu nhiên
+            const randomId = generateRandomId(10);
+
+            // Lưu dữ liệu vào bộ nhớ tạm (LocalStorage) với ID là key
+            // Cách này giúp link không bị dài, chỉ cần ID là đủ
+            const dataToSave = {
+                name: safeName,
+                password: password,
+                extra: extra,
+                code: code
             };
+            localStorage.setItem('raw_' + randomId, JSON.stringify(dataToSave));
 
-            // Mã hóa dữ liệu thành chuỗi
-            const encodedData = encodeData(JSON.stringify(data));
-
-            // Tạo link ngẫu nhiên 17 ký tự (như bạn muốn)
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let randomString = '';
-            for (let i = 0; i < 17; i++) {
-                randomString += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-
-            // Ghép link: Tên miền hiện tại + tên ngẫu nhiên + dấu # + dữ liệu
-            // Dùng window.location.origin để lấy đúng tên miền bạn đang dùng (ví dụ: criptdev.github.io)
+            // Tạo URL mới dựa trên tên miền hiện tại
+            // Dạng: https://phongscriptdev.github.io/Anti-Raw/tenuser/randomid
             const baseUrl = window.location.origin + window.location.pathname;
-            const finalUrl = `${baseUrl}?id=${randomString}#data=${encodedData}`;
-
-            // Hiển thị kết quả
-            const resultBox = document.getElementById('result-box');
-            const resultLink = document.getElementById('result-link');
             
-            resultLink.href = finalUrl;
-            resultLink.innerText = finalUrl;
-            resultBox.style.display = 'block';
+            // Đảm bảo baseUrl không bị dư dấu / ở cuối
+            const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+            const finalUrl = `${cleanBaseUrl}/${safeName}/${randomId}`;
+
+            // Chuyển hướng ngay lập tức đến link vừa tạo
+            window.location.href = finalUrl;
         }
 
-        // 2. COPY LINK
-        function copyLink() {
-            const linkText = document.getElementById('result-link').href;
-            navigator.clipboard.writeText(linkText).then(() => {
-                alert("Đã copy link!");
-            });
-        }
-
-        // 3. TỰ ĐỘNG ĐIỀN KHI TRUY CẬP LINK
+        // 3. HÀM KIỂM TRA VÀ HIỂN THỊ TRANG RAW KHI CÓ LINK
         window.onload = function() {
-            // Lấy phần dữ liệu sau dấu #
-            if (window.location.hash && window.location.hash.startsWith('#data=')) {
-                try {
-                    const encodedData = window.location.hash.replace('#data=', '');
-                    const decodedString = decodeData(encodedData);
-                    const data = JSON.parse(decodedString);
+            // Lấy đường dẫn hiện tại (ví dụ: /Anti-Raw/tenuser/randomid)
+            const pathParts = window.location.pathname.split('/').filter(p => p !== '');
+            
+            // Nếu đường dẫn có ít nhất 2 phần (tên user và ID)
+            if (pathParts.length >= 2) {
+                // Lấy ID cuối cùng trên URL
+                const rawId = pathParts[pathParts.length - 1];
+                const userName = pathParts[pathParts.length - 2];
 
-                    // Điền lại vào form
-                    document.getElementById('url-name').value = data.n || '';
-                    document.getElementById('password').value = data.p || '';
-                    document.getElementById('extra-input').value = data.e || '';
-                    document.getElementById('script-code').value = data.c || '';
+                // Lấy dữ liệu từ LocalStorage
+                const savedDataStr = localStorage.getItem('raw_' + rawId);
 
-                    // Thông báo
-                    alert("Đã tải dữ liệu từ link thành công!");
-                } catch(e) {
-                    console.error("Lỗi giải mã link:", e);
+                if (savedDataStr) {
+                    const data = JSON.parse(savedDataStr);
+
+                    // Ẩn form tạo link
+                    document.getElementById('create-form').style.display = 'none';
+
+                    // Hiện trang raw nền trắng
+                    document.getElementById('raw-view').style.display = 'block';
+
+                    // Điền thông tin
+                    document.getElementById('raw-title').innerText = "Raw Code: " + data.name;
+                    document.getElementById('raw-user').innerText = "User: " + userName;
+                    document.getElementById('raw-code').innerText = data.code;
+                } else {
+                    // Nếu link không tồn tại trong bộ nhớ
+                    document.body.innerHTML = `
+                        <div style="color: white; background: #111; text-align: center; padding: 50px; width: 100%; height: 100vh; font-family: sans-serif;">
+                            <h1 style="color: #ef4444;">404 - Không tìm thấy Code</h1>
+                            <p>Link này không tồn tại hoặc đã bị xóa khỏi bộ nhớ trình duyệt.</p>
+                            <p style="color: #666; font-size: 12px; margin-top: 20px;">Lưu ý: Dữ liệu này chỉ tồn tại trên trình duyệt đã tạo ra nó.</p>
+                        </div>
+                    `;
                 }
             }
         };
