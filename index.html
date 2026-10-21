@@ -31,7 +31,6 @@
           return result;
       }
 
-      // TẠO LINK
       window.createAndRedirect = async function() {
           const name = document.getElementById('url-name').value.trim();
           const password = document.getElementById('password').value;
@@ -45,7 +44,6 @@
 
           const safeName = name.replace(/\s+/g, '_');
           const randomId = generateRandomId(10);
-
           const btn = document.querySelector('button');
           btn.innerText = "⏳ Đang tạo link..."; btn.disabled = true;
 
@@ -62,7 +60,6 @@
               if (baseUrl.endsWith('.html')) baseUrl = baseUrl.replace('.html', '');
               if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
 
-              // Tạo link bình thường
               window.location.href = `${baseUrl}/?user=${safeName}&id=${randomId}`;
           } catch (error) {
               alert("Lỗi khi lưu lên Firebase: " + error.message);
@@ -70,12 +67,11 @@
           }
       };
 
-      // HIỂN THỊ HOẶC TRẢ VỀ CODE THÔ
       window.onload = async function() {
           const urlParams = new URLSearchParams(window.location.search);
           const rawId = urlParams.get('id');
           const userName = urlParams.get('user');
-          const isRawMode = urlParams.get('raw') === 'true'; // KIỂM TRA XEM CÓ PHẢI CHẾ ĐỘ RAW KHÔNG
+          const isRawMode = urlParams.get('raw') === 'true';
 
           if (rawId) {
               try {
@@ -86,16 +82,15 @@
 
                       // NẾU LÀ CHẾ ĐỘ RAW (DÀNH CHO DELTA/EXECUTOR)
                       if (isRawMode) {
-                          // Xóa toàn bộ HTML, chỉ để lại code thô
-                          document.body.innerHTML = "";
+                          // Xóa sạch mọi thứ, chỉ để lại code thô
+                          document.documentElement.innerHTML = "";
+                          document.body.innerText = data.code;
                           document.body.style.margin = "0";
                           document.body.style.padding = "0";
-                          // Ghi code ra dưới dạng text thuần
-                          document.body.innerText = data.code;
                           return;
                       }
 
-                      // NẾU LÀ CHẾ ĐỘ XEM BÌNH THƯỜNG (GIAO DIỆN TRẮNG)
+                      // NẾU LÀ XEM BÌNH THƯỜNG
                       document.getElementById('create-form').style.display = 'none';
                       document.body.style.backgroundColor = '#fff'; 
                       document.body.style.padding = '0';
@@ -122,7 +117,9 @@
       }
     </script>
     <style>
-        body { background-color: #111; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding-top: 30px; }
+        /* MẶC ĐỊNH ẨN TOÀN BỘ GIAO DIỆN ĐI ĐỂ TRÁNH BỊ LẤY NHẦM HTML */
+        body { display: none; background-color: #111; color: white; font-family: sans-serif; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding-top: 30px; }
+        
         .container { background-color: #222; padding: 30px; border-radius: 10px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { text-align: center; margin-bottom: 20px; color: #facc15; }
         .form-group { margin-bottom: 15px; }
@@ -169,5 +166,14 @@
         <div class="raw-code" id="raw-code"></div>
     </div>
 
+    <script>
+        // Bật lại giao diện nếu không phải chế độ raw
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('raw') !== 'true') {
+                document.body.style.display = 'flex';
+            }
+        });
+    </script>
 </body>
 </html>
