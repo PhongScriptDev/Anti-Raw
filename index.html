@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Raw Link</title>
     <style>
-        /* GIAO DIỆN FORM TẠO LINK (NỀN TỐI) */
         body {
             background-color: #111;
             color: white;
@@ -60,7 +59,7 @@
 
         /* GIAO DIỆN TRANG RAW (NỀN TRẮNG) */
         #raw-view {
-            display: none; /* Ẩn mặc định, chỉ hiện khi có link */
+            display: none;
             background-color: #ffffff;
             color: #000000;
             font-family: monospace;
@@ -132,7 +131,7 @@
     </div>
 
     <script>
-        // 1. HÀM TẠO MÃ NGẪU NHIÊN 10 KÝ TỰ (SỐ + CHỮ)
+        // 1. TẠO MÃ NGẪU NHIÊN 10 KÝ TỰ (SỐ + CHỮ)
         function generateRandomId(length) {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
@@ -142,7 +141,7 @@
             return result;
         }
 
-        // 2. HÀM TẠO LINK VÀ CHUYỂN HƯỚNG
+        // 2. TẠO LINK VÀ CHUYỂN HƯỚNG
         function createAndRedirect() {
             const name = document.getElementById('url-name').value.trim();
             const password = document.getElementById('password').value;
@@ -154,14 +153,10 @@
                 return;
             }
 
-            // Xóa khoảng trắng trong tên user (để link đẹp hơn)
             const safeName = name.replace(/\s+/g, '_');
-
-            // Tạo 10 ký tự ngẫu nhiên
             const randomId = generateRandomId(10);
 
-            // Lưu dữ liệu vào bộ nhớ tạm (LocalStorage) với ID là key
-            // Cách này giúp link không bị dài, chỉ cần ID là đủ
+            // Lưu dữ liệu
             const dataToSave = {
                 name: safeName,
                 password: password,
@@ -170,52 +165,59 @@
             };
             localStorage.setItem('raw_' + randomId, JSON.stringify(dataToSave));
 
-            // Tạo URL mới dựa trên tên miền hiện tại
-            // Dạng: https://phongscriptdev.github.io/Anti-Raw/tenuser/randomid
-            const baseUrl = window.location.origin + window.location.pathname;
-            
-            // Đảm bảo baseUrl không bị dư dấu / ở cuối
-            const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-            const finalUrl = `${cleanBaseUrl}/${safeName}/${randomId}`;
+            // Lấy đường dẫn gốc (ví dụ: https://criptdev.github.io/Anti-Raw/)
+            // Cắt bỏ mọi tham số hoặc dấu / thừa ở cuối
+            let baseUrl = window.location.origin + window.location.pathname;
+            baseUrl = baseUrl.split('?')[0]; 
+            if (baseUrl.endsWith('.html')) {
+                baseUrl = baseUrl.replace('.html', '');
+            }
+            if (baseUrl.endsWith('/')) {
+                baseUrl = baseUrl.slice(0, -1);
+            }
 
-            // Chuyển hướng ngay lập tức đến link vừa tạo
+            // Tạo link mới
+            const finalUrl = `${baseUrl}/${safeName}/${randomId}`;
+
+            // Chuyển hướng
             window.location.href = finalUrl;
         }
 
-        // 3. HÀM KIỂM TRA VÀ HIỂN THỊ TRANG RAW KHI CÓ LINK
+        // 3. KIỂM TRA VÀ HIỂN THỊ TRANG RAW
         window.onload = function() {
-            // Lấy đường dẫn hiện tại (ví dụ: /Anti-Raw/tenuser/randomid)
+            // Tách các phần của URL
             const pathParts = window.location.pathname.split('/').filter(p => p !== '');
-            
-            // Nếu đường dẫn có ít nhất 2 phần (tên user và ID)
-            if (pathParts.length >= 2) {
-                // Lấy ID cuối cùng trên URL
-                const rawId = pathParts[pathParts.length - 1];
-                const userName = pathParts[pathParts.length - 2];
 
-                // Lấy dữ liệu từ LocalStorage
+            // Nếu có từ 2 phần trở lên (Tên + ID), ví dụ: /Anti-Raw/phongscript/abc123
+            if (pathParts.length >= 2) {
+                const rawId = pathParts[pathParts.length - 1]; // Lấy ID ở cuối
+                const userName = pathParts[pathParts.length - 2]; // Lấy tên người dùng
+
                 const savedDataStr = localStorage.getItem('raw_' + rawId);
 
                 if (savedDataStr) {
                     const data = JSON.parse(savedDataStr);
 
-                    // Ẩn form tạo link
+                    // Ẩn form
                     document.getElementById('create-form').style.display = 'none';
+                    document.body.style.backgroundColor = '#fff'; // Đổi nền body thành trắng
+                    document.body.style.padding = '0';
 
-                    // Hiện trang raw nền trắng
+                    // Hiện trang Raw
                     document.getElementById('raw-view').style.display = 'block';
 
-                    // Điền thông tin
+                    // Điền dữ liệu
                     document.getElementById('raw-title').innerText = "Raw Code: " + data.name;
-                    document.getElementById('raw-user').innerText = "User: " + userName;
+                    document.getElementById('raw-user').innerText = "Created by: " + userName;
                     document.getElementById('raw-code').innerText = data.code;
                 } else {
-                    // Nếu link không tồn tại trong bộ nhớ
+                    // Nếu không tìm thấy ID trong bộ nhớ
                     document.body.innerHTML = `
-                        <div style="color: white; background: #111; text-align: center; padding: 50px; width: 100%; height: 100vh; font-family: sans-serif;">
+                        <div style="color: #333; text-align: center; padding: 50px; width: 100%; height: 100vh; font-family: sans-serif; background: #fff;">
                             <h1 style="color: #ef4444;">404 - Không tìm thấy Code</h1>
                             <p>Link này không tồn tại hoặc đã bị xóa khỏi bộ nhớ trình duyệt.</p>
                             <p style="color: #666; font-size: 12px; margin-top: 20px;">Lưu ý: Dữ liệu này chỉ tồn tại trên trình duyệt đã tạo ra nó.</p>
+                            <a href="/" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 5px;">Quay lại</a>
                         </div>
                     `;
                 }
