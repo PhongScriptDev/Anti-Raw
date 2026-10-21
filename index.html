@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Raw Link</title>
-    <!-- Nhúng thư viện Firebase -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
       import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-      // CẤU HÌNH FIREBASE CỦA BẠN ĐÃ ĐƯỢC ĐIỀN SẴN
+      // CẤU HÌNH FIREBASE CỦA BẠN
       const firebaseConfig = {
         apiKey: "AIzaSyBHJpsXdmdwxDlf3ejFCkU084RSDbNFsM",
         authDomain: "anti-raw.firebaseapp.com",
@@ -20,11 +19,9 @@
         appId: "1:774620109202:web:48414d935beb000a5c894b"
       };
 
-      // Khởi tạo Firebase
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      // Hàm tạo mã ngẫu nhiên 10 ký tự
       function generateRandomId(length) {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
           let result = '';
@@ -34,7 +31,7 @@
           return result;
       }
 
-      // Hàm tạo link
+      // TẠO LINK
       window.createAndRedirect = async function() {
           const name = document.getElementById('url-name').value.trim();
           const password = document.getElementById('password').value;
@@ -53,7 +50,6 @@
           btn.innerText = "⏳ Đang tạo link..."; btn.disabled = true;
 
           try {
-              // Lưu dữ liệu lên Firebase
               await set(ref(db, 'raw_scripts/' + randomId), {
                   name: safeName,
                   password: password,
@@ -61,34 +57,45 @@
                   code: code
               });
 
-              // Lấy đường dẫn gốc
               let baseUrl = window.location.origin + window.location.pathname;
               baseUrl = baseUrl.split('?')[0]; 
               if (baseUrl.endsWith('.html')) baseUrl = baseUrl.replace('.html', '');
               if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
 
-              // Chuyển hướng
+              // Tạo link bình thường
               window.location.href = `${baseUrl}/?user=${safeName}&id=${randomId}`;
           } catch (error) {
-              alert("Lỗi khi lưu lên Firebase: " + error.message + "\n(Hãy chắc chắn bạn đã bật Realtime Database ở chế độ Test Mode)");
+              alert("Lỗi khi lưu lên Firebase: " + error.message);
               btn.innerText = "Create raw link"; btn.disabled = false;
           }
       };
 
-      // Hàm hiển thị code khi truy cập link
+      // HIỂN THỊ HOẶC TRẢ VỀ CODE THÔ
       window.onload = async function() {
           const urlParams = new URLSearchParams(window.location.search);
           const rawId = urlParams.get('id');
           const userName = urlParams.get('user');
+          const isRawMode = urlParams.get('raw') === 'true'; // KIỂM TRA XEM CÓ PHẢI CHẾ ĐỘ RAW KHÔNG
 
           if (rawId) {
               try {
-                  // Lấy dữ liệu từ Firebase
                   const snapshot = await get(ref(db, 'raw_scripts/' + rawId));
                   
                   if (snapshot.exists()) {
                       const data = snapshot.val();
-                      
+
+                      // NẾU LÀ CHẾ ĐỘ RAW (DÀNH CHO DELTA/EXECUTOR)
+                      if (isRawMode) {
+                          // Xóa toàn bộ HTML, chỉ để lại code thô
+                          document.body.innerHTML = "";
+                          document.body.style.margin = "0";
+                          document.body.style.padding = "0";
+                          // Ghi code ra dưới dạng text thuần
+                          document.body.innerText = data.code;
+                          return;
+                      }
+
+                      // NẾU LÀ CHẾ ĐỘ XEM BÌNH THƯỜNG (GIAO DIỆN TRẮNG)
                       document.getElementById('create-form').style.display = 'none';
                       document.body.style.backgroundColor = '#fff'; 
                       document.body.style.padding = '0';
@@ -110,7 +117,6 @@
               <div style="color: #333; text-align: center; padding: 50px; width: 100%; height: 100vh; font-family: sans-serif; background: #fff;">
                   <h1 style="color: #ef4444;">404 - Không tìm thấy Code</h1>
                   <p>Link này không tồn tại hoặc đã bị xóa.</p>
-                  <a href="/" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 5px;">Quay lại</a>
               </div>
           `;
       }
@@ -134,34 +140,27 @@
 </head>
 <body>
 
-    <!-- FORM TẠO LINK -->
     <div class="container" id="create-form">
         <h2>Create Raw Link</h2>
-
         <div class="form-group">
             <label>Tên URL:</label>
-            <input type="text" id="url-name" placeholder="Nhập tên (ví dụ: phongscript)...">
+            <input type="text" id="url-name" placeholder="Nhập tên...">
         </div>
-
         <div class="form-group">
             <label>Mật khẩu:</label>
             <input type="password" id="password" placeholder="Nhập mật khẩu...">
         </div>
-
         <div class="form-group">
             <label>Input phụ:</label>
             <input type="text" id="extra-input" placeholder="Nhập input phụ...">
         </div>
-
         <div class="form-group">
             <label>Code:</label>
             <textarea id="script-code" placeholder="Dán code vào đây..."></textarea>
         </div>
-
         <button onclick="createAndRedirect()">Create raw link</button>
     </div>
 
-    <!-- TRANG RAW (CHỈ HIỆN KHI TRUY CẬP LINK) -->
     <div id="raw-view">
         <div class="raw-header">
             <div class="raw-title" id="raw-title">Raw Script</div>
