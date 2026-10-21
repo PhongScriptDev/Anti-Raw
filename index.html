@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tạo Raw Link</title>
+    <title>Create Raw Link</title>
     <style>
         body {
             background-color: #111;
@@ -11,9 +11,11 @@
             font-family: sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             margin: 0;
+            padding-top: 30px;
+            padding-bottom: 30px;
         }
         .container {
             background-color: #222;
@@ -23,7 +25,7 @@
             max-width: 500px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        h2 { text-align: center; margin-bottom: 20px; }
+        h2 { text-align: center; margin-bottom: 20px; color: #facc15; }
         
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-size: 14px; color: #ccc; }
@@ -37,9 +39,10 @@
             border-radius: 5px;
             box-sizing: border-box;
             font-family: monospace;
+            font-size: 14px;
         }
         textarea {
-            height: 100px;
+            height: 120px;
             resize: vertical;
         }
         
@@ -68,9 +71,11 @@
         }
         #result-link {
             color: #4ade80;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             word-break: break-all;
+            text-decoration: underline;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -78,6 +83,7 @@
 
     <div class="container">
         <h2>Create Raw Link</h2>
+        <p style="text-align:center; color:#aaa; font-size:12px; margin-bottom:20px;">(Dữ liệu sẽ được lưu vào link, không cần server)</p>
 
         <div class="form-group">
             <label>Tên URL:</label>
@@ -102,12 +108,25 @@
         <button onclick="createLink()">Create raw link</button>
 
         <div id="result-box">
-            <p>Link của bạn:</p>
-            <div id="result-link"></div>
+            <p>Link của bạn (Bấm vào để mở):</p>
+            <a id="result-link" target="_blank"></a>
+            <br><br>
+            <button onclick="copyLink()" style="background:#4ade80; padding:8px; font-size:14px;">Copy Link</button>
         </div>
     </div>
 
     <script>
+        // Hàm mã hóa Base64 hỗ trợ tiếng Việt
+        function encodeData(str) {
+            return btoa(encodeURIComponent(str));
+        }
+
+        // Hàm giải mã Base64
+        function decodeData(str) {
+            return decodeURIComponent(atob(str));
+        }
+
+        // 1. TẠO LINK
         function createLink() {
             const name = document.getElementById('url-name').value;
             const password = document.getElementById('password').value;
@@ -119,34 +138,68 @@
                 return;
             }
 
-            // Tạo chuỗi ký tự ngẫu nhiên dài tối đa 17 ký tự
+            // Gom dữ liệu thành một Object
+            const data = {
+                n: name,
+                p: password,
+                e: extra,
+                c: code
+            };
+
+            // Mã hóa dữ liệu thành chuỗi
+            const encodedData = encodeData(JSON.stringify(data));
+
+            // Tạo link ngẫu nhiên 17 ký tự (như bạn muốn)
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let randomString = '';
             for (let i = 0; i < 17; i++) {
                 randomString += chars.charAt(Math.floor(Math.random() * chars.length));
             }
 
-            // Tạo link
-            const baseUrl = "https://aur_meow.com/anti-raw/";
-            const finalUrl = baseUrl + randomString;
+            // Ghép link: Tên miền hiện tại + tên ngẫu nhiên + dấu # + dữ liệu
+            // Dùng window.location.origin để lấy đúng tên miền bạn đang dùng (ví dụ: criptdev.github.io)
+            const baseUrl = window.location.origin + window.location.pathname;
+            const finalUrl = `${baseUrl}?id=${randomString}#data=${encodedData}`;
 
             // Hiển thị kết quả
             const resultBox = document.getElementById('result-box');
             const resultLink = document.getElementById('result-link');
             
+            resultLink.href = finalUrl;
             resultLink.innerText = finalUrl;
             resultBox.style.display = 'block';
-            
-            // Lưu tạm dữ liệu (nếu bạn cần dùng sau này)
-            const dataToSave = {
-                urlName: name,
-                password: password,
-                extraInput: extra,
-                code: code,
-                generatedLink: finalUrl
-            };
-            console.log("Dữ liệu đã tạo:", dataToSave);
         }
+
+        // 2. COPY LINK
+        function copyLink() {
+            const linkText = document.getElementById('result-link').href;
+            navigator.clipboard.writeText(linkText).then(() => {
+                alert("Đã copy link!");
+            });
+        }
+
+        // 3. TỰ ĐỘNG ĐIỀN KHI TRUY CẬP LINK
+        window.onload = function() {
+            // Lấy phần dữ liệu sau dấu #
+            if (window.location.hash && window.location.hash.startsWith('#data=')) {
+                try {
+                    const encodedData = window.location.hash.replace('#data=', '');
+                    const decodedString = decodeData(encodedData);
+                    const data = JSON.parse(decodedString);
+
+                    // Điền lại vào form
+                    document.getElementById('url-name').value = data.n || '';
+                    document.getElementById('password').value = data.p || '';
+                    document.getElementById('extra-input').value = data.e || '';
+                    document.getElementById('script-code').value = data.c || '';
+
+                    // Thông báo
+                    alert("Đã tải dữ liệu từ link thành công!");
+                } catch(e) {
+                    console.error("Lỗi giải mã link:", e);
+                }
+            }
+        };
     </script>
 </body>
 </html>
